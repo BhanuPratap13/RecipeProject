@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Recipe - ReciBook</title>
+  <link rel="stylesheet" href="recipe.css" />
+</head>
+<body>
+  <header class="navbar">
+    <div class="nav-container">
+      <div class="logo">🍳 ReciBook</div>
+      <nav>
+        <ul class="nav-links">
+          <li><a href="index.html">Home</a></li>
+          <li><a href="createRecipe.html">My Recipes</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main class="recipe-details">
+    <div class="container" id="recipeDetail">
+      <p>Loading recipe...</p>
+    </div>
+  </main>
+
+  <script>
+    const API_URL = 'http://localhost:3000/api';
+
+    function getQueryParam(name) {
+      const params = new URLSearchParams(window.location.search);
+      return params.get(name);
+    }
+
+    function formatStars(rating) {
+      const full = Math.floor(rating);
+      const half = rating % 1 >= 0.5;
+      return '⭐'.repeat(full) + (half ? '✨' : '');
+    }
+
+    async function checkIfLiked(recipeId, token) {
+      try {
+        const res = await fetch(`${API_URL}/likes/${recipeId}/user`, {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+        const data = await res.json();
+        return data.liked;
+      } catch (err) {
+        console.error("Error checking like status:", err);
+        return false;
+      }
+    }
+
+    async function loadRecipe() {
+      const id = getQueryParam("id");
+      const container = document.getElementById("recipeDetail");
+      const token = localStorage.getItem("token");
+
+      if (!id) {
+        container.innerHTML = "<p>Recipe not found.</p>";
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API_URL}/recipes/${id}`);
+        if (!res.ok) throw new Error("Failed to fetch recipe");
+        const recipe = await res.json();
+
+        const ratingRes = await fetch(`${API_URL}/ratings/${id}`);
+        const ratingData = await ratingRes.json();
+        const averageRating = ratingData.averageRating || 0;
+        const ratingCount = ratingData.ratingCount || 0;
+
+        let userHasLiked = token ? await checkIfLiked(id, token) : false;
+
+        container.innerHTML = `
+          <h1>${recipe.title}</h1>
+          <div class="meta">
+            <p><strong>Chef:</strong> ${recipe.createdBy?.name || 'Unknown'}</p>
+            <p><strong>Cooking Time:</strong> ${recipe.cookingTime || 'N/A'} mins</p>
+            <p><strong>Categories:</strong> ${recipe.categories?.join(', ') || 'N/A'}</p>
+            <p><strong>Tags:</strong> ${recipe.tags?.map(tag => `#${tag}`).join(' ') || 'None'}</p>
+            <p><strong>Likes:</strong> ❤️ ${recipe.likesCount || 0}</p>
+            <p><strong>Rating:</strong> ${formatStars(averageRating)} (${averageRating.toFixed(1)} from ${ratingCount} ratings)</p>
+          </div>
+
+          <div class="actions">
+            <button id="likeBtn">${userHasLiked ? '👎 Unlike' : '👍 Like'}</button>
+            <button id="rateBtn">⭐ Rate this Recipe</button>
+          </div>
+
+          <img src="${recipe.imageUrl || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800'}" class="main-image" alt="${recipe.title}" />
+
+          <p class="description">${recipe.description || 'No description provided.'}</p>
+
+          <h3>Ingredients</h3>
+          <ul>
+            ${recipe.ingredients?.map(ing => `<li>${ing.quantity} ${ing.unit} ${ing.name}</li>`).join('') || '<li>None</li>'}
+          </ul>
+
+          <h3>Steps</h3>
+          <ol>
+            ${recipe.steps?.map(step => `<li>${step}</li>`).join('') || '<li>No steps listed.</li>'}
+          </ol>
+        `;
+
+        const likeBtn = document.getElementById("likeBtn");
+        const rateBtn = document.getElementById("rateBtn");
+
+        likeBtn?.addEventListener("click", async () => {
+          if (!token) return alert("Please log in to like/unlike this recipe.");
+
+          try {
+            if (userHasLiked) {
+              // UNLIKE
+              const res = await fetch(`${API_URL}/likes`, {
+                method: "DELETE",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ recipeId: id }),
+              });
+
+              const data = await res.json();
+              if (!res.ok) {
+                alert(data.message || "Failed to unlike");
+                return;
+              }
+
+              userHasLiked = false;
+              likeBtn.textContent = "👍 Like";
+            } else {
+              // LIKE
+              const res = await fetch(`${API_URL}/likes`, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ recipeId: id }),
+              });
+
+              const data = await res.json();
+              if (!res.ok) {
+                if (res.status === 400 && data.message === "Recipe already liked") {
+                  alert("You've already liked this recipe.");
+                } else {
+                  alert("Failed to like.");
+                }
+                return;
+              }
+
+              userHasLiked = true;
+              likeBtn.textContent = "👎 Unlike";
+            }
+
+            loadRecipe(); // Refresh to update count
+          } catch (err) {
+            alert("Error performing like/unlike.");
+            console.error(err);
+          }
+        });
+
+        rateBtn?.addEventListener("click", async () => {
+          if (!token) return alert("Please log in to rate this recipe.");
+
+          const rating = prompt("Rate this recipe (1-5):");
+          const ratingVal = parseFloat(rating);
+          if (isNaN(ratingVal) || ratingVal < 1 || ratingVal > 5) {
+            alert("Please enter a number between 1 and 5.");
+            return;
+          }
+
+          try {
+            const res = await fetch(`${API_URL}/ratings`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({ recipeId: id, rating: ratingVal }),
+            });
+
+            const data = await res.json();
+            if (!res.ok) {
+              if (res.status === 400 && data.message === "Rating must be between 1 and 5") {
+                alert("Invalid rating value.");
+              } else if (res.status === 401) {
+                alert("Login required to rate.");
+              } else {
+                alert("You have already rated this recipe. Your rating was updated.");
+              }
+              return;
+            }
+
+            loadRecipe();
+          } catch (err) {
+            alert("Error submitting rating.");
+          }
+        });
+
+      } catch (err) {
+        container.innerHTML = `<p style="color:red;">Error loading recipe. Try again later.</p>`;
+        console.error(err);
+      }
+    }
+
+    document.addEventListener("DOMContentLoaded", loadRecipe);
+  </script>
+
+</body>
+</html>

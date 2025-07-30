@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ReciBook - Discover Amazing Recipes</title>
+  <link rel="stylesheet" href="index.css" />
+</head>
+<body>
+  <header class="navbar">
+    <div class="nav-container">
+      <div class="logo">🍳 ReciBook</div>
+      <nav>
+        <ul class="nav-links">
+          <li><a href="#">Home</a></li>
+          <li><a href="#">My Recipes</a></li>
+          <li><a href="#">Explore</a></li>
+          <li><a href="#">Collections</a></li>
+        </ul>
+      </nav>
+
+      <!-- Auth Buttons -->
+      <div class="auth-buttons" id="authButtons">
+        <a href="login.html" class="btn btn-login">Login</a>
+        <a href="register.html" class="btn btn-signup">Sign Up</a>
+      </div>
+
+      <!-- Profile Dropdown -->
+      <div class="profile-dropdown" id="profileDropdown" style="display: none;">
+        <button class="btn btn-profile" onclick="toggleProfileMenu()">👤 Profile</button>
+        <div class="profile-menu" id="profileMenu">
+          <a href="profile.html">Profile</a>
+          <a href="#" onclick="logout()">Logout</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <section class="search-section">
+    <div class="search-container">
+      <h1 class="search-title">Discover Amazing Recipes</h1>
+      <p class="search-subtitle">Find your next favorite dish from thousands of recipes</p>
+      <a href="createRecipe.html" class="btn btn-recipe">Post Your Recipe</a>
+      <div class="search-box">
+        <input type="text" class="search-input" placeholder="Search for recipes, ingredients, or cuisines..." id="searchInput">
+        <button class="search-btn" onclick="searchRecipes()">🔍 Search</button>
+      </div>
+    </div>
+  </section>
+
+  <main class="main-content">
+    <div class="section-header">
+      <h2 class="section-title">Featured Recipes</h2>
+      <p class="section-subtitle">Handpicked recipes that our community loves</p>
+    </div>
+
+    <div class="loading" id="loading">
+      <div class="loading-spinner"></div>
+      <p>Loading delicious recipes...</p>
+    </div>
+
+    <div class="recipes-container" id="recipesContainer" style="display: none;">
+      <!-- Recipes will be injected here -->
+    </div>
+  </main>
+
+  <footer>
+    <div class="footer-content">
+      <div class="footer-section">
+        <h3>ReciBook</h3>
+        <p>Your ultimate destination for discovering, sharing, and creating amazing recipes from around the world.</p>
+      </div>
+      <div class="footer-section">
+        <h3>Quick Links</h3>
+        <ul>
+          <li><a href="#">Browse Recipes</a></li>
+          <li><a href="#">Submit Recipe</a></li>
+          <li><a href="#">Meal Planning</a></li>
+          <li><a href="#">Cooking Tips</a></li>
+        </ul>
+      </div>
+      <div class="footer-section">
+        <h3>Community</h3>
+        <ul>
+          <li><a href="#">Join Our Forum</a></li>
+          <li><a href="#">Recipe Contests</a></li>
+          <li><a href="#">Chef Profiles</a></li>
+          <li><a href="#">Success Stories</a></li>
+        </ul>
+      </div>
+      <div class="footer-section">
+        <h3>Support</h3>
+        <ul>
+          <li><a href="#">Help Center</a></li>
+          <li><a href="#">Contact Us</a></li>
+          <li><a href="#">Privacy Policy</a></li>
+          <li><a href="#">Terms of Service</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>&copy; 2025 ReciBook. All rights reserved.</p>
+    </div>
+  </footer>
+
+  <script>
+    const API_URL = 'http://localhost:3000/api/recipes';
+    const RATING_API_URL = 'http://localhost:3000/api/ratings';
+    let allRecipes = [];
+
+    async function fetchRating(recipeId) {
+      try {
+        const res = await fetch(`${RATING_API_URL}/${recipeId}`);
+        if (!res.ok) throw new Error('Failed to fetch rating');
+        return await res.json();
+      } catch (error) {
+        console.error('Error fetching rating for recipe', recipeId, error);
+        return { averageRating: 0, ratingCount: 0 };
+      }
+    }
+
+    async function fetchRecipes() {
+      try {
+        const res = await fetch(API_URL);
+        if (!res.ok) throw new Error('Failed to fetch recipes');
+        const data = await res.json();
+
+        const ratingsPromises = data.map(recipe => fetchRating(recipe._id));
+        const ratings = await Promise.all(ratingsPromises);
+
+        allRecipes = data.map((recipe, i) => ({
+          ...recipe,
+          averageRating: ratings[i].averageRating,
+          ratingCount: ratings[i].ratingCount,
+        }));
+
+        renderRecipes(allRecipes);
+      } catch (error) {
+        document.getElementById('loading').innerHTML = `
+          <div style="color: var(--primary-color);">
+            <h3>Oops! Something went wrong</h3>
+            <p>We couldn't load the recipes. Please try again later.</p>
+            <button class="btn btn-signup" onclick="fetchRecipes()" style="margin-top: 1rem;">Retry</button>
+          </div>`;
+        console.error(error);
+      }
+    }
+
+    document.getElementById('searchInput').addEventListener('input', () => {
+        searchRecipes();
+    });
+
+    function searchRecipes() {
+      const query = document.getElementById('searchInput').value.toLowerCase().trim();
+
+      if (!query) {
+        renderRecipes(allRecipes);
+        return;
+      }
+
+      const results = allRecipes.filter(recipe =>
+        recipe.title.toLowerCase().includes(query) ||
+        (recipe.description && recipe.description.toLowerCase().includes(query)) ||
+        (recipe.cuisine && recipe.cuisine.toLowerCase().includes(query)) ||
+        (recipe.createdBy?.name && recipe.createdBy.name.toLowerCase().includes(query))
+      );
+
+      renderRecipes(results);
+    }
+
+    function generateStars(rating) {
+      const fullStars = Math.floor(rating);
+      const hasHalfStar = rating % 1 >= 0.5;
+      let stars = '';
+      for (let i = 0; i < fullStars; i++) stars += '⭐';
+      if (hasHalfStar) stars += '✨';
+      return stars;
+    }
+
+    function renderRecipes(recipes) {
+      const container = document.getElementById('recipesContainer');
+      const loading = document.getElementById('loading');
+
+      loading.style.display = 'none';
+      container.style.display = 'grid';
+      container.innerHTML = '';
+
+      if (recipes.length === 0) {
+        container.innerHTML = `<div style="grid-column: 1 / -1; text-align: center; padding: 3rem;">
+          <h3 style="color: var(--text-light); margin-bottom: 1rem;">No recipes found</h3>
+          <p style="color: var(--text-light);">Try adjusting your search criteria</p>
+        </div>`;
+        return;
+      }
+
+      recipes.forEach((recipe, index) => {
+        const card = document.createElement('div');
+        card.className = 'recipe-card';
+        card.style.animationDelay = `${index * 0.1}s`;
+
+        card.innerHTML = `
+          <div class="recipe-image-container">
+            <img src="${recipe.imageUrl || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop'}" 
+                 alt="${recipe.title}" class="recipe-image"
+                 onerror="this.src='https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop'" />
+          </div>
+          <div class="recipe-content">
+            <h3 class="recipe-title">${recipe.title}</h3>
+            <div class="recipe-meta">
+              <div class="meta-item">👨‍🍳 ${recipe.createdBy?.name || 'Unknown Chef'}</div>
+              <div class="meta-item">⏱️ ${recipe.cookingTime || 0} mins</div>
+            </div>
+            <div class="recipe-stats">
+              <div class="stat-item">❤️ ${recipe.likesCount || 0}</div>
+              <div class="stat-item">
+                <span class="rating-stars">${generateStars(recipe.averageRating || 0)}</span>
+                <span>${(recipe.averageRating || 0).toFixed(1)} (${recipe.ratingCount || 0})</span>
+              </div>
+            </div>
+          </div>
+        `;
+
+        container.appendChild(card);
+        
+        card.addEventListener('click', () => {
+          window.location.href = `recipe.html?id=${recipe._id}`;
+        });
+      });
+    }
+
+    function toggleProfileMenu() {
+      const menu = document.getElementById('profileMenu');
+      menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+    }
+
+    function logout() {
+      localStorage.removeItem('token');
+      location.reload();
+    }
+
+    function checkAuth() {
+      const token = localStorage.getItem('token');
+      const authButtons = document.getElementById('authButtons');
+      const profileDropdown = document.getElementById('profileDropdown');
+
+      if (token) {
+        authButtons.style.display = 'none';
+        profileDropdown.style.display = 'flex';
+      } else {
+        authButtons.style.display = 'flex';
+        profileDropdown.style.display = 'none';
+      }
+    }
+    
+    document.addEventListener('DOMContentLoaded', () => {
+      checkAuth();
+      fetchRecipes();
+    });
+
+    document.addEventListener('click', function (e) {
+      const menu = document.getElementById('profileMenu');
+      const button = document.querySelector('.btn-profile');
+      if (!menu.contains(e.target) && !button.contains(e.target)) {
+        menu.style.display = 'none';
+      }
+    });
+  </script>
+</body>
+</html>

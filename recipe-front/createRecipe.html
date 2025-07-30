@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Create Recipe - ReciBook</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background: #f9f9f9;
+        margin: 0;
+        padding: 0;
+      }
+
+      /* Modern Navbar Styles (copied from recipe.html style) */
+      .navbar {
+        background-color: white;
+        padding: 1rem 0;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+      }
+
+      .nav-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 2rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .logo {
+        font-size: 1.75rem;
+        font-weight: 800;
+        background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+
+      .nav-links {
+        list-style: none;
+        display: flex;
+        gap: 1rem;
+        padding: 0;
+        margin: 0;
+      }
+
+      .nav-links li a {
+        color: black;
+        text-decoration: none;
+        font-weight: 500;
+        padding: 6px 12px;
+        border-radius: 6px;
+        transition: background 0.3s ease;
+      }
+
+      .nav-links li a:hover {
+        background-color: rgba(255, 255, 255, 0.2);
+      }
+
+      .container {
+        max-width: 800px;
+        margin: 2rem auto;
+        background: white;
+        padding: 2rem;
+        border-radius: 10px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      }
+
+      input,
+      textarea,
+      button,
+      select {
+        display: block;
+        width: 100%;
+        margin-bottom: 1rem;
+        padding: 0.5rem;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+      }
+
+      .ingredient-item {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 10px;
+      }
+
+      .ingredient-item input {
+        flex: 1;
+      }
+
+      .ingredient-item button {
+        width: auto;
+        padding: 0.3rem 0.5rem;
+        font-size: 1rem;
+        background: transparent;
+        border: none;
+        color: red;
+        cursor: pointer;
+      }
+
+      .my-recipes {
+        margin-top: 3rem;
+      }
+
+      .recipe-card {
+        border: 1px solid #ccc;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        border-radius: 8px;
+        background: #f4f4f4;
+      }
+    </style>
+  </head>
+  <body>
+
+    <header class="navbar">
+      <div class="nav-container">
+        <div class="logo">🍳 ReciBook</div>
+        <nav>
+          <ul class="nav-links">
+            <li><a href="index.html">Home</a></li>
+            <li><a href="#reci">My Recipes</a></li>
+          </ul>
+        </nav>
+      </div>
+    </header>
+
+    <div class="container">
+      <h2>Create a Recipe</h2>
+      <form id="recipeForm">
+        <input type="text" id="title" placeholder="Recipe Title" required />
+        <textarea id="description" placeholder="Description"></textarea>
+
+        <div id="ingredientsList">
+          <div class="ingredient-item">
+            <input type="text" placeholder="Ingredient Name" class="ingredient-name" required />
+            <input type="number" placeholder="Qty" class="ingredient-qty" min="1" required />
+            <input type="text" placeholder="Unit" class="ingredient-unit" required />
+          </div>
+        </div>
+        <button type="button" onclick="addIngredientField()">➕ Add Ingredient</button>
+
+        <textarea id="steps" placeholder="Steps (separate by newline)" required></textarea>
+        <input type="number" id="cookingTime" placeholder="Cooking Time (mins)" />
+        <input type="text" id="imageUrl" placeholder="Image URL" />
+        <input type="text" id="categories" placeholder="Categories (comma separated)" />
+        <input type="text" id="tags" placeholder="Tags (comma separated)" />
+        <button type="submit">Submit</button>
+      </form>
+
+      <div id="reci" class="my-recipes">
+        <h3>My Recipes</h3>
+        <div id="myRecipes"></div>
+      </div>
+    </div>
+
+    <script>
+      const token = localStorage.getItem("token");
+      if (!token) {
+        window.location.href = "login.html";
+      }
+
+      function addIngredientField() {
+        const div = document.createElement("div");
+        div.className = "ingredient-item";
+        div.innerHTML = `
+          <input type="text" placeholder="Name" class="ingredient-name" required />
+          <input type="number" placeholder="Qty" class="ingredient-qty" min="1" required />
+          <input type="text" placeholder="Unit" class="ingredient-unit" required />
+          <button type="button" onclick="this.parentElement.remove()">❌</button>
+        `;
+        document.getElementById("ingredientsList").appendChild(div);
+      }
+
+      function getIngredients() {
+        const items = document.querySelectorAll(".ingredient-item");
+        return Array.from(items).map((item) => ({
+          name: item.querySelector(".ingredient-name").value.trim(),
+          quantity: parseFloat(item.querySelector(".ingredient-qty").value),
+          unit: item.querySelector(".ingredient-unit").value.trim(),
+        }));
+      }
+
+      document.getElementById("recipeForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const recipeId = e.target.dataset.recipeId;
+        const data = {
+          title: document.getElementById("title").value,
+          description: document.getElementById("description").value,
+          ingredients: getIngredients(),
+          steps: document.getElementById("steps").value.split("\n").map((s) => s.trim()),
+          cookingTime: document.getElementById("cookingTime").value,
+          imageUrl: document.getElementById("imageUrl").value,
+          categories: document.getElementById("categories").value.split(",").map(c => c.trim()),
+          tags: document.getElementById("tags").value.split(",").map(t => t.trim())
+        };
+
+        try {
+          const url = recipeId
+            ? `http://localhost:3000/api/recipes/${recipeId}`
+            : "http://localhost:3000/api/recipes";
+
+          const method = recipeId ? "PUT" : "POST";
+
+          const res = await fetch(url, {
+            method,
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify(data),
+          });
+
+          const result = await res.json();
+          if (res.ok) {
+            alert(recipeId ? "Recipe updated successfully" : "Recipe created successfully");
+            e.target.reset();
+            delete e.target.dataset.recipeId;
+            loadMyRecipes();
+          } else {
+            alert(result.message || "Failed to submit recipe");
+          }
+        } catch (err) {
+          console.error(err);
+          alert("Error submitting recipe");
+        }
+      });
+
+      const RATING_API_URL = 'http://localhost:3000/api/ratings';
+
+      async function fetchRating(recipeId) {
+        try {
+          const res = await fetch(`${RATING_API_URL}/${recipeId}`);
+          if (!res.ok) throw new Error('Rating fetch failed');
+          return await res.json();
+        } catch (err) {
+          console.error('Error fetching rating:', err);
+          return { averageRating: 0, ratingCount: 0 };
+        }
+      }
+
+      function generateStars(rating) {
+        const fullStars = Math.floor(rating);
+        const hasHalfStar = rating % 1 >= 0.5;
+        let stars = '';
+        for (let i = 0; i < fullStars; i++) stars += '⭐';
+        if (hasHalfStar) stars += '✨';
+        return stars;
+      }
+
+      async function loadMyRecipes() {
+        try {
+          const res = await fetch("http://localhost:3000/api/recipes", {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+          const recipes = await res.json();
+          const container = document.getElementById("myRecipes");
+          container.innerHTML = "";
+
+          const payload = JSON.parse(atob(token.split('.')[1]));
+          const userId = payload._id || payload.id || payload.userId;
+
+          const userRecipes = recipes.filter(r => r.createdBy?._id === userId);
+
+            for (const r of userRecipes) {
+            const { averageRating, ratingCount } = await fetchRating(r._id);
+
+            const card = document.createElement("div");
+            card.className = "recipe-card";
+            card.innerHTML = `
+                <h4>${r.title}</h4>
+                <p>${r.description}</p>
+                <small>
+                ${r.cookingTime || 0} mins |
+                Likes: ${r.likesCount ?? 0} |
+                Rating: ${averageRating.toFixed(1)} (${ratingCount}) ${generateStars(averageRating)}
+                </small>
+                <div style="margin-top: 0.5rem;">
+                <button onclick="editRecipe('${r._id}')">✏️ Update</button>
+                <button onclick="deleteRecipe('${r._id}')">🗑️ Delete</button>
+                </div>
+            `;
+            container.appendChild(card);
+            }
+        } catch (err) {
+          console.error("Error loading recipes", err);
+        }
+      }
+
+      async function editRecipe(id) {
+        try {
+          const res = await fetch(`http://localhost:3000/api/recipes/${id}`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+          const recipe = await res.json();
+
+          document.getElementById("title").value = recipe.title;
+          document.getElementById("description").value = recipe.description;
+          document.getElementById("steps").value = recipe.steps.join("\n");
+          document.getElementById("cookingTime").value = recipe.cookingTime;
+          document.getElementById("imageUrl").value = recipe.imageUrl || "";
+          document.getElementById("categories").value = recipe.categories?.join(", ") || "";
+          document.getElementById("tags").value = recipe.tags?.join(", ") || "";
+
+          document.getElementById("ingredientsList").innerHTML = "";
+          recipe.ingredients.forEach((ing) => {
+            const div = document.createElement("div");
+            div.className = "ingredient-item";
+            div.innerHTML = `
+              <input type="text" value="${ing.name}" class="ingredient-name" required />
+              <input type="number" value="${ing.quantity}" class="ingredient-qty" required />
+              <input type="text" value="${ing.unit}" class="ingredient-unit" required />
+              <button type="button" onclick="this.parentElement.remove()">❌</button>
+            `;
+            document.getElementById("ingredientsList").appendChild(div);
+          });
+
+          document.getElementById("recipeForm").dataset.recipeId = recipe._id;
+
+        } catch (err) {
+          console.error("Failed to fetch recipe", err);
+        }
+      }
+
+      async function deleteRecipe(id) {
+        if (!confirm("Are you sure you want to delete this recipe?")) return;
+        try {
+          const res = await fetch(`http://localhost:3000/api/recipes/${id}`, {
+            method: "DELETE",
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+          if (res.ok) {
+            alert("Deleted successfully");
+            loadMyRecipes();
+          } else {
+            alert("Failed to delete recipe");
+          }
+        } catch (err) {
+          alert("Error deleting recipe");
+        }
+      }
+
+      window.onload = loadMyRecipes;
+    </script>
+  </body>
+</html>

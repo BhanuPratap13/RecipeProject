@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Profile - ReciBook</title>
+  <link rel="stylesheet" href="login.css" />
+  <style>
+    :root {
+      --gradient-primary: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f2f2f2;
+    }
+
+    .navbar {
+      background-color: white;
+      color: black;
+      padding: 10px 0;
+    }
+
+    .nav-container {
+      max-width: 1100px;
+      margin: auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 20px;
+    }
+
+    .logo {
+      font-size: 1.75rem;
+      font-weight: 800;
+      background: var(--gradient-primary);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .nav-links {
+      list-style: none;
+      display: flex;
+      gap: 20px;
+    }
+
+    .nav-links a {
+      color: black;
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .profile-container {
+      max-width: 500px;
+      margin: 60px auto;
+      padding: 30px;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .profile-container h2 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .profile-data p {
+      font-size: 18px;
+      margin: 10px 0;
+    }
+
+    .logout-btn {
+      margin-top: 20px;
+      background: #333;
+      color: white;
+      padding: 10px;
+      border: none;
+      border-radius: 5px;
+      width: 100%;
+      cursor: pointer;
+    }
+
+    .logout-btn:hover {
+      background: #555;
+    }
+
+    .error-message {
+      color: red;
+      text-align: center;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <header class="navbar">
+    <div class="nav-container">
+      <div class="logo">🍳 ReciBook</div>
+      <nav>
+        <ul class="nav-links">
+          <li><a href="index.html">Home</a></li>
+          <li><a href="#" onclick="logout()">Logout</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main class="profile-container">
+    <h2>Your Profile</h2>
+    <!-- Profile Image -->
+    <div style="text-align: center; margin-bottom: 20px;">
+        <img id="profileImage" src="avatar.png" alt="Profile Image" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 2px solid #ccc;">
+    </div>
+    <div class="profile-data" id="profileData">
+      <p>Loading...</p>
+    </div>
+    <p class="error-message" id="error"></p>
+    <button class="logout-btn" onclick="logout()">Logout</button>
+  </main>
+
+  <script>
+    const token = localStorage.getItem("token");
+    const profileData = document.getElementById("profileData");
+    const errorMsg = document.getElementById("error");
+
+    if (!token) {
+      window.location.href = "login.html";
+    } else {
+      fetch("http://localhost:3000/api/auth/profile", {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.message) {
+          throw new Error(data.message);
+        }
+
+        profileData.innerHTML = `
+          <p><strong>Name:</strong> ${data.name}</p>
+          <p><strong>Email:</strong> ${data.email}</p>
+        `;
+      })
+      .catch(err => {
+        errorMsg.textContent = err.message;
+        profileData.innerHTML = "";
+      });
+    }
+
+    function logout() {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      window.location.href = "login.html";
+    }
+  </script>
+</body>
+</html>
