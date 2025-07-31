@@ -130,7 +130,7 @@
     if (!token) {
       window.location.href = "login.html";
     } else {
-      fetch("http://localhost:3000/api/auth/profile", {
+      fetch("https://recipeproject-4v9c.onrender.com/api/auth/profile", {
         method: "GET",
         headers: {
           "Authorization": `Bearer ${token}`

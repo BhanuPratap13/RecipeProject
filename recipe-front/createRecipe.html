@@ -198,8 +198,8 @@
 
         try {
           const url = recipeId
-            ? `http://localhost:3000/api/recipes/${recipeId}`
-            : "http://localhost:3000/api/recipes";
+            ? `https://recipeproject-4v9c.onrender.com/api/recipes/${recipeId}`
+            : "https://recipeproject-4v9c.onrender.com/api/recipes";
 
           const method = recipeId ? "PUT" : "POST";
 
@@ -227,7 +227,7 @@
         }
       });
 
-      const RATING_API_URL = 'http://localhost:3000/api/ratings';
+      const RATING_API_URL = 'https://recipeproject-4v9c.onrender.com/api/ratings';
 
       async function fetchRating(recipeId) {
         try {
@@ -251,7 +251,7 @@
 
       async function loadMyRecipes() {
         try {
-          const res = await fetch("http://localhost:3000/api/recipes", {
+          const res = await fetch("https://recipeproject-4v9c.onrender.com/api/recipes", {
             headers: {
               Authorization: `Bearer ${token}`,
             },
@@ -292,7 +292,7 @@
 
       async function editRecipe(id) {
         try {
-          const res = await fetch(`http://localhost:3000/api/recipes/${id}`, {
+          const res = await fetch(`https://recipeproject-4v9c.onrender.com/api/recipes/${id}`, {
             headers: {
               Authorization: `Bearer ${token}`,
             },
@@ -330,7 +330,7 @@
       async function deleteRecipe(id) {
         if (!confirm("Are you sure you want to delete this recipe?")) return;
         try {
-          const res = await fetch(`http://localhost:3000/api/recipes/${id}`, {
+          const res = await fetch(`https://recipeproject-4v9c.onrender.com/api/recipes/${id}`, {
             method: "DELETE",
             headers: {
               Authorization: `Bearer ${token}`,
